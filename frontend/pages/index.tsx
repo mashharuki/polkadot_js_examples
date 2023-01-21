@@ -3,8 +3,8 @@ import { Abi, CodePromise, ContractPromise } from "@polkadot/api-contract";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
 import { numberToHex } from '@polkadot/util';
 import { useEffect, useState } from "react";
-import abi from "../change_with_your_own_metadata.json";
 import contract_file from "../flipper.contract.json";
+import abi from "../metadata.json";
 
 /**
  * Home Component
@@ -21,6 +21,10 @@ const Home = () => {
   const [gasConsumed, setGasConsumed] = useState("");
   const [outcome, setOutcome] = useState("");
   const [contractAddress, setContractAddress] = useState("");
+
+  const gasLimitValue = 100000 * 1000000;
+  const gasLimit_1 = numberToHex(21000);
+  const storageDepositLimit = null;
 
   /**
    * extensionSetup function
@@ -55,11 +59,6 @@ const Home = () => {
     // call extensionSetup
     await extensionSetup();
   };
-
-  
-  const gasLimitValue = 100000 * 1000000;
-  const gasLimit_1 = numberToHex(21000);
-  const storageDepositLimit = null;
 
   /**
    * deployContract function
@@ -157,6 +156,9 @@ const Home = () => {
     //api.disconnect();
   };
 
+  /**
+   * changeFlipValue function
+   */
   const changeFlipValue = async () => {
     const { web3FromSource } = await import("@polkadot/extension-dapp");
     // const wsProvider = new WsProvider(blockchainUrl);
@@ -167,34 +169,47 @@ const Home = () => {
     const performingAccount = accounts[0];
     const injector = await web3FromSource(performingAccount.meta.source);
 
+    // call flip function 
     const { gasRequired, result, output } = await contract.query.flip(
       actingAddress,
       { value: 0, gasLimit: -1 }
     );
 
     console.log("### gasRequired:",gasRequired.toHuman().toString());
-
+    // create tx 
     const flip = await contract.tx.flip({ value: 0, gasLimit: gasRequired });
+
     if (injector !== undefined) {
-      const unsub = await flip.signAndSend(actingAddress, { signer: injector.signer }, ( { status, events = [] } ) => {
-        if (status.isInBlock) {
-          setResult("in a block");
-        } else if (status.isFinalized) {
-          setResult("finalized");
-          events.forEach(({ event: { data } }) => {
-            console.log("### data.methhod:", data.method);
-            if (String(data.method) == "ExtrinsicFailed") {
-              console.log("### check ExtrinsicFailed");
-              alert("Transaction Failed.");
-            }
-          });
-          unsub();
-          //api.disconnect();
-        }
+      // sign & tx
+      const unsub = await flip.signAndSend(
+        actingAddress, 
+        { 
+          signer: injector.signer 
+        }, ( { 
+          status, 
+          events = [] 
+        } ) => {
+          if (status.isInBlock) {
+            setResult("in a block");
+          } else if (status.isFinalized) {
+            setResult("finalized");
+            events.forEach(({ event: { data } }) => {
+              console.log("### data.methhod:", data.method);
+              if (String(data.method) == "ExtrinsicFailed") {
+                console.log("### check ExtrinsicFailed");
+                alert("Transaction Failed.");
+              }
+            });
+            unsub();
+            //api.disconnect();
+          }
       });
     }
   };
 
+  /**
+   * add_test_data function
+   */
   const add_test_data = async () => {
     const { web3FromSource } = await import("@polkadot/extension-dapp");
     // const wsProvider = new WsProvider(blockchainUrl);
@@ -204,12 +219,16 @@ const Home = () => {
     const contract = new ContractPromise(api, abi, contractAddress);
     const performingAccount = accounts[0];
     const injector = await web3FromSource(performingAccount.meta.source);
+
+    // create tx
     const flip = await contract.tx.addTestData(
       { value: 0, gasLimit: gasLimitValue },
       actingAddress,
       0
     );
+    
     if (injector !== undefined) {
+      // sign & tx
       const unsub = await flip.signAndSend(actingAddress, { signer: injector.signer }, ( { status, events = [] }) => {
         if (status.isInBlock) {
           setResult("in a block");
@@ -230,6 +249,9 @@ const Home = () => {
     }
   };
 
+  /**
+   * own_error_test function
+   */
   const own_error_test = async () => {
     const { web3FromSource } = await import("@polkadot/extension-dapp");
     // const wsProvider = new WsProvider(blockchainUrl);
@@ -239,11 +261,14 @@ const Home = () => {
     const contract = new ContractPromise(api, abi, contractAddress);
     const performingAccount = accounts[0];
     const injector = await web3FromSource(performingAccount.meta.source);
+
+    // call ownErrorTest function
     const flip = await contract.tx.ownErrorTest(
       { value: 0, gasLimit: gasLimitValue },
       actingAddress,
       0
     );
+    
     if (injector !== undefined) {
       const unsub = await flip.signAndSend(actingAddress, { signer: injector.signer }, ({ events = [], status } ) => {
         if (status.isInBlock) {
@@ -271,8 +296,13 @@ const Home = () => {
     }
   };
 
+  /**
+   * get_test_data function
+   */
   const get_test_data = async () => {
     const contract = new ContractPromise(api, abi, contractAddress);
+
+    // call getTestList 
     const { gasConsumed, result, output } = await contract.query.getTestList(
       actingAddress,
       { value: 0, gasLimit: -1 },
@@ -280,6 +310,7 @@ const Home = () => {
     );
     setGasConsumed(gasConsumed.toHuman());
     setResult(JSON.stringify(result.toHuman()));
+    
     if (output !== undefined && output !== null) {
       const response_json = output.toJSON();
       const json_data = JSON.parse(JSON.stringify(response_json));

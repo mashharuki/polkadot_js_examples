@@ -11,7 +11,13 @@ yarn dev
 
 - バックエンド
 
-1. ビルドコマンド
+1. テストコマンド
+
+```bash
+cd flipper && cargo +nightly contract test
+```
+
+2. ビルドコマンド
 
 ```bash
 cd flipper && cargo +nightly contract build

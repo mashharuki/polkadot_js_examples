@@ -1,6 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+/**
+ * flipper contract
+ */
 #[openbrush::contract]
 mod flipper {
     use ink_prelude::string::{String, ToString};
@@ -10,7 +13,14 @@ mod flipper {
     use openbrush::{storage::Mapping, traits::Storage};
 
     #[derive(
-        Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout,
+        Debug, 
+        PartialEq, 
+        Eq, 
+        scale::Encode, 
+        scale::Decode, 
+        Clone, 
+        SpreadLayout, 
+        PackedLayout,
     )]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub enum TokenType {
@@ -55,6 +65,9 @@ mod flipper {
         owner: AccountId,
     }
 
+    /**
+     * contract function
+     */
     impl Flipper {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
