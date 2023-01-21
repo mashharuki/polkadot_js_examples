@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
-import { ApiPromise, Keyring, WsProvider } from "@polkadot/api";
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import { Abi, CodePromise, ContractPromise } from "@polkadot/api-contract";
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
-import { ContractPromise, CodePromise,Abi } from "@polkadot/api-contract";
+import { numberToHex } from '@polkadot/util';
+import { useEffect, useState } from "react";
 import abi from "../change_with_your_own_metadata.json";
 import contract_file from "../flipper.contract.json";
-import { numberToHex,BN } from '@polkadot/util';
 
+/**
+ * Home Component
+ * @returns 
+ */
 const Home = () => {
   const [block, setBlock] = useState(0);
   const [lastBlockHash, setLastBlockHash] = useState("");
@@ -18,26 +22,37 @@ const Home = () => {
   const [outcome, setOutcome] = useState("");
   const [contractAddress, setContractAddress] = useState("");
 
+  /**
+   * extensionSetup function
+   * @returns 
+   */
   const extensionSetup = async () => {
     const { web3Accounts, web3Enable } = await import(
       "@polkadot/extension-dapp"
     );
+
     const extensions = await web3Enable("Polk4NET");
     if (extensions.length === 0) {
       return;
     }
+    // get accounts
     const account = await web3Accounts();
     setAccounts(account);
   };
 
+  /**
+   * setup function
+   */
   const setup = async () => {
     const wsProvider = new WsProvider(blockchainUrl);
+    // create ApiPromise Object 
     const api = await ApiPromise.create({ provider: wsProvider });
     await api.rpc.chain.subscribeNewHeads((lastHeader) => {
       setBlock(lastHeader.number.toNumber());
       setLastBlockHash(lastHeader.hash.toString());
     });
     setApi(api);
+    // call extensionSetup
     await extensionSetup();
   };
 
@@ -46,30 +61,9 @@ const Home = () => {
   const gasLimit_1 = numberToHex(21000);
   const storageDepositLimit = null;
 
-  // const deployContract = async () => {
-  //   const { web3FromSource } = await import("@polkadot/extension-dapp");
-  //   const keyring = new Keyring({ type: 'sr25519' });
-  //   const alicePair = keyring.addFromUri('//Alice', { name: 'Alice default' });
-  //   const caller = keyring.addFromAddress("actingAddress");
-  //   const wsProvider = new WsProvider(blockchainUrl);
-  //   const api = await ApiPromise.create({ provider: wsProvider });
-  //   setApi(api);
-  //   const contractWasm = contract_file.source.wasm;
-  //   const code = new CodePromise(api, abi, contractWasm);
-  //   const initValue = false;
-  //   console.log("contract is :", code);
-  //   const performingAccount = accounts[0];
-  //   const injector = await web3FromSource(performingAccount.meta.source);
-  //   const tx = code.tx.new({ gasLimit, storageDepositLimit }, initValue)
-  //   let address;
-  //   const unsub = await tx.signAndSend(alicePair, ({ contract, status }) => {
-  //     if (status.isInBlock || status.isFinalized) {
-  //       address = contract.address.toString();
-  //       unsub();
-  //     }
-  //   });
-  // };
-
+  /**
+   * deployContract function
+   */
   const deployContract = async () => {
     const { web3FromSource } = await import("@polkadot/extension-dapp");
     // const wsProvider = new WsProvider(blockchainUrl);
@@ -82,15 +76,16 @@ const Home = () => {
     const injector = await web3FromSource(performingAccount.meta.source);
     
     console.log("### pass 1");
-
+    // create
     const tx = code.tx.new({ value:0, gasLimit:gasLimitValue , storageDepositLimit }, 
       initValue,
       performingAccount.address
-      );
+    );
 
     console.log("### pass 2");
 
     let address = "";
+    // sign & send tx
     const unsub = await tx.signAndSend(
       actingAddress,
       { signer: injector.signer },
@@ -117,28 +112,39 @@ const Home = () => {
     );
   };
 
+  /**
+   * getFlipValueOnlyOwner function
+   */
   const getFlipValueOnlyOwner = async () => {
     // const wsProvider = new WsProvider(blockchainUrl);
     // const api = await ApiPromise.create({ provider: wsProvider });
     const contract = new ContractPromise(api, abi, contractAddress);
     //setApi(api);
+
+    // call getOnlyOwner function
     const { gasConsumed, result, output } = await contract.query.getOnlyOwner(
       actingAddress,
       { value: 0, gasLimit: -1 }
     );
     setGasConsumed(gasConsumed.toHuman());
     setResult(JSON.stringify(result.toHuman()));
+    
     if (output !== undefined && output !== null) {
       setOutcome(output.toHuman()?.toString() ?? "");
     }
     //api.disconnect();
   };
 
+  /**
+   * getFlipValue function
+   */
   const getFlipValue = async () => {
     // const wsProvider = new WsProvider(blockchainUrl);
     // const api = await ApiPromise.create({ provider: wsProvider });
     const contract = new ContractPromise(api, abi, contractAddress);
     //setApi(api);
+
+    // call get function
     const { gasConsumed, result, output } = await contract.query.get(
       actingAddress,
       { value: 0, gasLimit: -1 }
